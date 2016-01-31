@@ -45,11 +45,28 @@ var UtilityFunctions = {
   }
 }
 
+var egg = {
+  position: null,
+  step: 100,
+  reposition: function(maxX, maxY) {
+    this.position = new Position(Math.floor(Math.floor(Math.random() * maxX) / this.step) * this.step,
+                                 Math.floor(Math.floor(Math.random() * maxY) / this.step) * this.step);
+  },
+  draw: function() {
+    $('canvas#arena').drawArc({
+      strokeStyle: '#e60000',
+      strokeWidth: 5,
+      x: this.position.x, y: this.position.y,
+      radius: 3
+    });
+  }
+}
+
 var snake = {
   paths: [],
   direction: Direction.NONE,
   newDirection: Direction.NONE,
-  step: 10,
+  step: 100,
   maxX: 0,
   maxY: 0,
   init: function() {
@@ -57,7 +74,7 @@ var snake = {
     this.maxY = Math.ceil(window.innerHeight/this.step) * this.step;
     this.direction = Direction.RIGHT;
     var head = new Position(this.maxX/2, this.maxY/2);
-    var tail = new Position(this.maxX/2 - 50*this.step, this.maxY/2);
+    var tail = new Position(this.maxX/2 - 2*this.step, this.maxY/2);
     var path = [head, tail];
     this.paths.push(path);
   },
@@ -72,19 +89,19 @@ var snake = {
     var newHeadPath = [];
     switch(direction) {
       case Direction.UP:
-        head = new Position(position.x, this.maxY-this.step);
+        head = new Position(position.x, this.maxY);
         tail = new Position(position.x, this.maxY);
         break;
       case Direction.DOWN:
-        head = new Position(position.x, this.step);
+        head = new Position(position.x, 0);
         tail = new Position(position.x, 0);
         break;
       case Direction.LEFT:
-        head = new Position(this.maxX-this.step, position.y);
+        head = new Position(this.maxX, position.y);
         tail = new Position(this.maxX, position.y);
         break;
       case Direction.RIGHT:
-        head = new Position(this.step, position.y);
+        head = new Position(0, position.y);
         tail = new Position(0, position.y);
         break;
       default:
@@ -94,7 +111,6 @@ var snake = {
       this.paths.splice(0, 0, newHeadPath);  
     }
   },
-
 
   move: function() {
     if(this.direction == Direction.NONE)
@@ -108,8 +124,19 @@ var snake = {
 
     // Tail border check
     var tailPath = this.paths[this.paths.length - 1];
+    if(UtilityFunctions.isPositionEqual(tailPath[tailPath.length-2], tailPath[tailPath.length-1])) {
+      tailPath.splice(-1, 1);
+    }
     if(tailPath.length < 2) {
       this.paths.splice(-1, 1);
+    }
+
+    // Egg check
+    headPath = this.paths[0];
+    var incLength = false;
+    if(UtilityFunctions.isPositionEqual(headPath[0], egg.position)) {
+      egg.reposition(this.maxX, this.maxY);
+      incLength = true;
     }
 
     // Move head
@@ -118,13 +145,12 @@ var snake = {
 
     // Move tail
     tailPath = this.paths[this.paths.length - 1];
-    var len = tailPath.length;
-    var trailingDirection = UtilityFunctions.getDirection(tailPath[len-1], tailPath[len-2]);
-    this.movePosition(tailPath[len-1], trailingDirection);
-    if(UtilityFunctions.isPositionEqual(tailPath[len-2], tailPath[len-1])) {
-      tailPath.splice(-1, 1);
+    var trailingDirection = UtilityFunctions.getDirection(tailPath[tailPath.length-1], tailPath[tailPath.length-2]);
+    if(!incLength) {
+      this.movePosition(tailPath[tailPath.length-1], trailingDirection);
     }
   },
+  
   movePosition: function(position, direction) {
     switch(direction) {
       case Direction.UP:
@@ -160,7 +186,6 @@ var snake = {
     this.newDirection = Direction.NONE;
   },
   draw: function() {
-    $('canvas#arena').clearCanvas();
     for (var i = 0; i < this.paths.length; ++i) {
       for (var j = 0; j < this.paths[i].length - 1; ++j) {
         $('canvas#arena').drawLine({
@@ -178,11 +203,14 @@ var snake = {
 $(document).ready(function() {
   init();
   snake.init();
+  egg.reposition(snake.maxX, snake.maxY);
   window.setInterval(function() {
     snake.updateDirection();
     snake.move();
+    $('canvas#arena').clearCanvas();
+    egg.draw();
     snake.draw();
-  }, 50);  
+  }, 250);  
 });
 
 $(document).keydown(function(evt) {
