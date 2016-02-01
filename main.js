@@ -54,11 +54,11 @@ var Block = {
     var blocks = [];
     switch(type) {
       case this.type.FENCE:
-        for(var i = 0; i <= maxX; ++i) {
+        for(var i = 0; i <= maxX; i += arena.step) {
           blocks.push(new Position(i, 0));
           blocks.push(new Position(i, maxY));
         }
-        for(var i = 0; i <= maxY; ++i) {
+        for(var i = 0; i <= maxY; i += arena.step) {
           blocks.push(new Position(0, i));
           blocks.push(new Position(maxX, i));
         }
@@ -66,6 +66,17 @@ var Block = {
       default:
     }
     return blocks;
+  },
+  draw: function(blocks) {
+    for(var i = 0; i < blocks.length; ++i) {
+      $('canvas#arena').drawRect({
+        layer: false,
+        fillStyle: '#ffff00',
+        x: blocks[i].x, y: blocks[i].y,
+        width: 10,
+        height: 10
+      });
+    }
   }
 }
 
@@ -82,19 +93,20 @@ var arena = {
   maxX: 0,
   maxY: 0,
   step: 10,
-  blockType: Block.type.FENCE,
+  blockType: Block.type.NONE,
   grid: [[]],
+  blocks: [],
 
   init: function () {
     // grid boundaries
-    this.maxX = Math.ceil(window.innerWidth/this.step) * this.step;
-    this.maxY = Math.ceil(window.innerHeight/this.step) * this.step;
+    this.maxX = Math.floor(window.innerWidth/this.step) * this.step;
+    this.maxY = Math.floor(window.innerHeight/this.step) * this.step;
     var i,j,x,y;
     // set grid empty 
     this.grid = new Array(this.maxX+1);
-    for (i = 0; i <= this.maxX; ++i) {
+    for (i = 0; i <= this.maxX; i += arena.step) {
       this.grid[i] = new Array(this.maxY+1);
-      for (j = 0; j <= this.maxY; ++j) {
+      for (j = 0; j <= this.maxY; j += arena.step) {
         this.grid[i][j] = this.status.EMPTY;
       }
     }
@@ -102,12 +114,13 @@ var arena = {
 
   initGrid: function() {
     // set blocks
-    var blocks = Block.create(this.maxX, this.maxY, this.blockType);
-    for (i = 0; i < blocks.length; ++i) {
-      x = blocks[i].x;
-      y = blocks[i].y;
+    this.blocks = Block.create(this.maxX, this.maxY, this.blockType);
+    for (i = 0; i < this.blocks.length; ++i) {
+      x = this.blocks[i].x;
+      y = this.blocks[i].y;
       this.grid[x][y] = this.status.BLOCK;
     }
+    Block.draw(this.blocks);
 
     // set initial snake
     var head = snake.paths[0][0];
@@ -119,7 +132,7 @@ var arena = {
         var y2 = snake.paths[i][j+1].y;
         if(x1 == x2) {
           x = x1;
-          for(y = Math.min(y1, y2); y <= Math.max(y1, y2); ++y) {
+          for(y = Math.min(y1, y2); y <= Math.max(y1, y2); y += arena.step) {
             if(!UtilityFunctions.isPositionEqual(head, new Position(x, y))) {
               this.grid[x][y] = this.status.SNAKE;  
             }
@@ -127,7 +140,7 @@ var arena = {
         }
         else if(y1 == y2) {
           y = y1;
-          for(x = Math.min(x1, x2); x <= Math.max(x1, x2); ++x) {
+          for(x = Math.min(x1, x2); x <= Math.max(x1, x2); x += arena.step) {
             if(!UtilityFunctions.isPositionEqual(head, new Position(x, y))) {
               this.grid[x][y] = this.status.SNAKE;
             }
@@ -135,6 +148,7 @@ var arena = {
         }
       }
     }
+    snake.draw();
   },
 
   isEmpty: function (position) {
@@ -182,11 +196,13 @@ var snake = {
   paths: [],
   direction: Direction.NONE,
   newDirection: Direction.NONE,
-  length: 50,
+  length: 500,
   init: function() {
     this.direction = Direction.RIGHT;
-    var head = new Position(arena.maxX/2, arena.maxY/2);
-    var tail = new Position(arena.maxX/2 - this.length*arena.step, arena.maxY/2);
+    var head = new Position(Math.floor(Math.floor(arena.maxX/2) / arena.step) * arena.step,
+                            Math.floor(Math.floor(arena.maxY/2) / arena.step) * arena.step);
+    var tail = new Position(Math.floor(Math.floor(arena.maxX/2 - this.length) / arena.step) * arena.step,
+                            Math.floor(Math.floor(arena.maxY/2) / arena.step) * arena.step);
     var path = [head, tail];
     this.paths.push(path);
   },
@@ -336,6 +352,7 @@ $(document).ready(function() {
     egg.draw();
     snake.draw();
     $('canvas#arena').drawLayers();
+    Block.draw(arena.blocks);
   }, 100);  
 });
 
